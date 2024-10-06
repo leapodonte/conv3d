@@ -1,16 +1,10 @@
-mod gltf_builder;
+pub mod gltf_builder;
+pub use gltf_builder::*;
 
-use clap::{clap_derive::ValueEnum, Parser};
-use glob::glob;
+use clap::clap_derive::ValueEnum;
 use gltf::json;
-use gltf_builder::GltfBuilder;
 use json::validation::Checked::Valid;
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use std::{
-    fs::{File, OpenOptions},
-    io::BufWriter,
-    path::Path,
-};
+use std::path::Path;
 use stl_io::IndexedMesh;
 
 #[derive(Debug, Clone, ValueEnum, PartialEq, Eq, PartialOrd, Ord)]
