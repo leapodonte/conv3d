@@ -14,13 +14,13 @@ use std::{
 use stl_io::IndexedMesh;
 
 #[derive(Debug, Clone, ValueEnum, PartialEq, Eq, PartialOrd, Ord)]
-enum FileFormat {
+pub enum FileFormat {
     Stl,
     Gltf,
     Glb,
 }
 
-fn get_extension(format: FileFormat) -> &'static str {
+pub fn get_extension(format: FileFormat) -> &'static str {
     match format {
         FileFormat::Stl => "stl",
         FileFormat::Gltf => "gltf",
@@ -28,7 +28,7 @@ fn get_extension(format: FileFormat) -> &'static str {
     }
 }
 
-#[derive(Parser)]
+/*#[derive(Parser)]
 struct App {
     input_files: Vec<String>,
 
@@ -98,7 +98,7 @@ fn main() {
             println!("Output: {}", outpath.display());
         }
     });
-}
+}*/
 
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
@@ -121,7 +121,7 @@ fn bounding_coords(points: &[V3]) -> ([f32; 3], [f32; 3]) {
     (min, max)
 }
 
-fn convert_stl_to_gltf(
+pub fn convert_stl_to_gltf(
     stl: IndexedMesh,
     input_filename: impl AsRef<Path>,
 ) -> Result<GltfBuilder, String> {
