@@ -1,9 +1,10 @@
 pub mod gltf_builder;
 pub use gltf_builder::*;
 
+pub use gltf::json;
+pub use json::validation::Checked::Valid;
+
 use clap::clap_derive::ValueEnum;
-use gltf::json;
-use json::validation::Checked::Valid;
 use std::path::Path;
 use stl_io::IndexedMesh;
 
