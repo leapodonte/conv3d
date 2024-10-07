@@ -22,94 +22,15 @@ pub fn get_extension(format: FileFormat) -> &'static str {
     }
 }
 
-/*#[derive(Parser)]
-struct App {
-    input_files: Vec<String>,
-
-    #[arg(short, long)]
-    output_format: FileFormat,
-}
-
-fn main() {
-    let app = App::parse();
-
-    println!("{:?} {:?}", app.output_format, app.input_files);
-
-    let mut input_files = Vec::new();
-    for pattern in app.input_files {
-        for entry in glob(&pattern)
-            .unwrap_or_else(|_| panic!("Unable to read pattern: {}", &pattern))
-            .flatten()
-        {
-            input_files.push(entry);
-        }
-    }
-
-    input_files.par_iter().for_each(|path| {
-        let mut file = OpenOptions::new()
-            .read(true)
-            .open(path)
-            .unwrap_or_else(|_| panic!("Unable to open {}", path.display()));
-        let stl = stl_io::read_stl(&mut file)
-            .unwrap_or_else(|_| panic!("Unable to parse {}", path.display()));
-        println!("Parsed {}", path.display());
-
-        let mut outpath = path.clone();
-        outpath.set_extension(get_extension(app.output_format.to_owned()));
-        if outpath != *path {
-            let gltf =
-                if app.output_format == FileFormat::Glb || app.output_format == FileFormat::Gltf {
-                    convert_stl_to_gltf(stl, path).unwrap()
-                } else {
-                    unimplemented!()
-                };
-            let file = File::create(outpath.clone()).unwrap();
-            let writer = BufWriter::new(file);
-            if app.output_format == FileFormat::Glb {
-                let glb = gltf.to_glb().unwrap();
-                glb.to_writer(writer).unwrap();
-            } else if app.output_format == FileFormat::Gltf {
-                let file = File::create(outpath.clone()).unwrap();
-                let writer = BufWriter::new(file);
-                let mut gltf = gltf.merge_gltf_buffers().unwrap();
-                gltf.set_buffer_uri(
-                    0,
-                    Some(format!(
-                        "{}.bin",
-                        outpath
-                            .file_stem()
-                            .unwrap_or_default()
-                            .to_str()
-                            .unwrap_or_default()
-                    )),
-                )
-                .unwrap();
-                gltf.write_to_gltf(writer).unwrap();
-                gltf.write_all_buffers(outpath.parent().unwrap_or(Path::new(".")))
-                    .unwrap();
-            }
-
-            println!("Output: {}", outpath.display());
-        }
-    });
-}*/
-
-#[derive(Copy, Clone, Debug)]
-#[repr(C)]
-struct V3 {
-    v: [f32; 3],
-}
-
 /// Calculate bounding coordinates of a list of vertices, used for the clipping distance of the model
-fn bounding_coords(points: &[V3]) -> ([f32; 3], [f32; 3]) {
+pub fn bounding_coords(points: &[[f32; 3]]) -> ([f32; 3], [f32; 3]) {
     let mut min = [f32::MAX, f32::MAX, f32::MAX];
     let mut max = [f32::MIN, f32::MIN, f32::MIN];
 
     for point in points {
-        let p = point.v;
         for i in 0..3 {
-            min[i] = f32::min(min[i], p[i]);
-            max[i] = f32::max(max[i], p[i]);
+            min[i] = f32::min(min[i], point[i]);
+            max[i] = f32::max(max[i], point[i]);
         }
     }
     (min, max)
@@ -132,31 +53,24 @@ pub fn convert_stl_to_gltf(
     let (positions, mut normals) = stl
         .vertices
         .iter()
-        .map(|it| {
-            (
-                V3 {
-                    v: [it[0], it[1], it[2]],
-                },
-                V3 { v: [0.0, 0.0, 0.0] },
-            )
-        })
-        .collect::<(Vec<V3>, Vec<V3>)>();
+        .map(|it| ([it[0], it[1], it[2]], [0.0, 0.0, 0.0]))
+        .collect::<(Vec<[f32; 3]>, Vec<[f32; 3]>)>();
 
     let mut normals_count = vec![0; normals.len()];
     for face in &stl.faces {
         for vi in face.vertices {
-            normals[vi].v[0] += face.normal[0];
-            normals[vi].v[1] += face.normal[1];
-            normals[vi].v[2] += face.normal[2];
+            normals[vi][0] += face.normal[0];
+            normals[vi][1] += face.normal[1];
+            normals[vi][2] += face.normal[2];
             normals_count[vi] += 1;
         }
     }
 
     // normalize
     for i in 0..normals.len() {
-        let n = normals[i].v;
+        let n = normals[i];
         let count = normals_count[i] as f32;
-        normals[i].v = [n[0] / count, n[1] / count, n[2] / count];
+        normals[i] = [n[0] / count, n[1] / count, n[2] / count];
     }
 
     let (min, max) = bounding_coords(&positions);
@@ -226,4 +140,75 @@ pub fn convert_stl_to_gltf(
     gltf.set_default_scene(Some(scene));
 
     Ok(gltf)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        fs::{File, OpenOptions},
+        io::BufWriter,
+        path::Path,
+    };
+
+    use crate::convert_stl_to_gltf;
+
+    #[test]
+    fn test_glb() {
+        let path = std::env::current_dir().unwrap().join("data/torus.stl");
+        let mut file = OpenOptions::new()
+            .read(true)
+            .open(path.clone())
+            .unwrap_or_else(|_| panic!("Unable to open {}", path.clone().display()));
+        let stl = stl_io::read_stl(&mut file)
+            .unwrap_or_else(|_| panic!("Unable to parse {}", path.display()));
+        println!("Parsed {}", path.display());
+        let mut outpath = path.clone();
+        outpath.set_extension("glb");
+        if outpath != *path {
+            let gltf = convert_stl_to_gltf(stl, path).unwrap();
+            let file = File::create(outpath.clone()).unwrap();
+            let writer = BufWriter::new(file);
+            let glb = gltf.to_glb().unwrap();
+            glb.to_writer(writer).unwrap();
+
+            println!("Output: {}", outpath.display());
+        }
+    }
+
+    #[test]
+    fn test_gltf() {
+        let path = std::env::current_dir().unwrap().join("data/torus.stl");
+        let mut file = OpenOptions::new()
+            .read(true)
+            .open(path.clone())
+            .unwrap_or_else(|_| panic!("Unable to open {}", path.clone().display()));
+        let stl = stl_io::read_stl(&mut file)
+            .unwrap_or_else(|_| panic!("Unable to parse {}", path.display()));
+        println!("Parsed {}", path.display());
+        let mut outpath = path.clone();
+        outpath.set_extension("gltf");
+        if outpath != *path {
+            let gltf = convert_stl_to_gltf(stl, path).unwrap();
+            let file = File::create(outpath.clone()).unwrap();
+            let writer = BufWriter::new(file);
+            let mut gltf = gltf.merge_gltf_buffers().unwrap();
+            gltf.set_buffer_uri(
+                0,
+                Some(format!(
+                    "{}.bin",
+                    outpath
+                        .file_stem()
+                        .unwrap_or_default()
+                        .to_str()
+                        .unwrap_or_default()
+                )),
+            )
+            .unwrap();
+            gltf.write_to_gltf(writer).unwrap();
+            gltf.write_all_buffers(outpath.parent().unwrap_or(Path::new(".")))
+                .unwrap();
+
+            println!("Output: {}", outpath.display());
+        }
+    }
 }
