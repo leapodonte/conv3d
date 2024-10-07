@@ -203,6 +203,14 @@ impl GltfBuilder {
         })
     }
 
+    pub fn push_node_with_matrix(&mut self, mesh: Index<Mesh>, matrix: [f32; 16]) -> Index<Node> {
+        self.push(json::Node {
+            mesh: Some(mesh),
+            matrix: Some(matrix),
+            ..Default::default()
+        })
+    }
+
     pub fn push_scene(&mut self, nodes: Vec<Index<Node>>) -> Index<Scene> {
         self.push(json::Scene {
             extensions: Default::default(),
