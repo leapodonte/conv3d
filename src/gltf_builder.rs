@@ -196,16 +196,23 @@ impl GltfBuilder {
         })
     }
 
-    pub fn push_node(&mut self, mesh: Index<Mesh>) -> Index<Node> {
+    pub fn push_node(&mut self, name: Option<String>, mesh: Index<Mesh>) -> Index<Node> {
         self.push(json::Node {
             mesh: Some(mesh),
+            name,
             ..Default::default()
         })
     }
 
-    pub fn push_node_with_matrix(&mut self, mesh: Index<Mesh>, matrix: [f32; 16]) -> Index<Node> {
+    pub fn push_node_with_matrix(
+        &mut self,
+        name: Option<String>,
+        mesh: Index<Mesh>,
+        matrix: [f32; 16],
+    ) -> Index<Node> {
         self.push(json::Node {
             mesh: Some(mesh),
+            name,
             matrix: Some(matrix),
             ..Default::default()
         })

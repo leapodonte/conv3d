@@ -135,8 +135,8 @@ pub fn convert_stl_to_gltf(
         targets: None,
     };
 
-    let mesh = gltf.push_mesh(Some(mesh_name), vec![primitive], None);
-    let node = gltf.push_node(mesh);
+    let mesh = gltf.push_mesh(Some(mesh_name.clone()), vec![primitive], None);
+    let node = gltf.push_node(Some(mesh_name), mesh);
     let scene = gltf.push_scene(vec![node]);
     gltf.set_default_scene(Some(scene));
 
