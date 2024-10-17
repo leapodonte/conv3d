@@ -196,10 +196,16 @@ impl GltfBuilder {
         })
     }
 
-    pub fn push_node(&mut self, name: Option<String>, mesh: Index<Mesh>) -> Index<Node> {
+    pub fn push_node(
+        &mut self,
+        name: Option<String>,
+        mesh: Index<Mesh>,
+        children: Option<Vec<Index<Node>>>,
+    ) -> Index<Node> {
         self.push(json::Node {
             mesh: Some(mesh),
             name,
+            children,
             ..Default::default()
         })
     }
@@ -208,11 +214,13 @@ impl GltfBuilder {
         &mut self,
         name: Option<String>,
         mesh: Index<Mesh>,
+        children: Option<Vec<Index<Node>>>,
         matrix: [f32; 16],
     ) -> Index<Node> {
         self.push(json::Node {
             mesh: Some(mesh),
             name,
+            children,
             matrix: Some(matrix),
             ..Default::default()
         })
